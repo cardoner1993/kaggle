@@ -97,7 +97,7 @@ class ResidualBlock1D(Layer):
 class DNN:
     def __init__(
             self,
-            backbone='LSTM',
+            backbone='LSTM',  # New option TEST_CLIT
             charlevel=False,
             use_glove=True,
             preprocess_data=False,
@@ -235,6 +235,23 @@ class DNN:
         elif self.backbone == 'DEMO':
             model.add(Conv1D(256, 3, activation='relu'))
             model.add(GlobalMaxPooling1D())
+        elif self.backbone == 'TEST_CLIT':
+            model.add(Conv1D(64, 5, padding='valid', kernel_initializer='normal', activation='relu'))
+            model.add(MaxPooling1D(2))
+            model.add(Conv1D(128, 5, padding='valid', kernel_initializer='normal', activation='relu'))
+            model.add(MaxPooling1D(2))
+            model.add(Conv1D(256, 5, padding='valid', kernel_initializer='normal', activation='relu'))
+            model.add(Conv1D(512, 5, padding='valid', kernel_initializer='normal', activation='relu'))
+            model.add(Conv1D(1024, 5, padding='valid', kernel_initializer='normal', activation='relu'))
+            model.add(Conv1D(2048, 5, padding='valid', kernel_initializer='normal', activation='relu'))
+            model.add(Conv1D(4098, 5, padding='valid', kernel_initializer='normal', activation='relu'))
+            model.add(Conv1D(8196, 5, padding='valid', kernel_initializer='normal', activation='relu'))
+            model.add(GlobalMaxPooling1D())
+            model.add(Dense(120, kernel_initializer='normal', activation='relu'))
+            model.add(Dense(240, kernel_initializer='normal', activation='relu'))
+            model.add(Dense(480, kernel_initializer='normal', activation='relu'))
+            model.add(Dense(980, kernel_initializer='normal', activation='relu'))
+            model.add(Dense(1500, kernel_initializer='normal', activation='relu'))
         else:
             raise NotImplementedError
 
