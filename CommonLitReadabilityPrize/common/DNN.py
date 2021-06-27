@@ -94,7 +94,7 @@ class ResidualBlock1D(Layer):
         return config
 
 
-class DNN():
+class DNN:
     def __init__(
             self,
             backbone='LSTM',
@@ -107,7 +107,8 @@ class DNN():
             max_vocab=10000,
             max_len=8192,
             embedding_mat_columns=50,
-            use_multilabel=False
+            use_multilabel=False,
+            epochs=200
     ):
 
         self.backbone = backbone
@@ -128,6 +129,7 @@ class DNN():
         self.is_trained = False
 
         self.logger = logger
+        self.epochs = epochs
 
         self.augment = False
         self.multilabel = use_multilabel
@@ -143,12 +145,6 @@ class DNN():
     @model.setter
     def model(self, value):
         self.__model = value
-
-    # @staticmethod
-    # def clean_text(text):
-    #     text = text.translate(str.maketrans(' ', ' ', punctuation))
-    #     text = ' '.join([word for word in text.split() if word not in stop_words])
-    #     return text
 
     @staticmethod
     def clean_text(txt):
@@ -182,7 +178,7 @@ class DNN():
 
     def load_glove(self, additional_tokens=[]):
         embeddings_index = {}
-        glove_path = f'./data/glove.6B.{self.embedding_mat_columns}d.txt'  # Todo change it if running from MAIN
+        glove_path = f'../../data/glove.6B.{self.embedding_mat_columns}d.txt'  # Todo change it if running from MAIN
         f = open(glove_path)
         for line in f:
             values = line.split()
@@ -200,14 +196,7 @@ class DNN():
             embedding_matrix[i] = embs
             w2i[word] = i
         i += 1
-        # print(w2i.get('<OOV>'))
         w2i['<OOV>'] = i
-
-        if self.use_sensitive_tokens:
-            # print(additional_tokens)
-            for t in additional_tokens:
-                i += 1
-                w2i[t] = i
 
         if self.logger:
             self.logger.info(f'load_glove: {embedding_matrix.shape}, {len(w2i.keys())}')
@@ -220,14 +209,6 @@ class DNN():
         return input_shape
 
     def get_model(self, vocab_size, embedding_matrix=None):
-        # Defines self model if None else uses loaded model
-        # if self.model:
-        #     self.model.summary()
-        #     self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-        #     es = EarlyStopping(monitor='val_loss', mode='min', patience=20)
-        #     self.model.fit(data, labels, epochs=500, batch_size=60, validation_split=0.2, verbose=1,
-        #                    callbacks=[es])
-        # else:
 
         model = Sequential()
         model.add(Embedding(
@@ -307,7 +288,7 @@ class DNN():
 
         return np.array(X_train_aug), np.array(y_train_aug)
 
-    def fit(self, X_train, y_train, X_valid, y_valid, out_path):
+    def fit(self, X_train, y_train, out_path):
         X, y = X_train, y_train
 
         if not Path(out_path).exists():
@@ -364,8 +345,6 @@ class DNN():
 
             labels_encoded = pd.get_dummies(y).values
 
-        # else:
-
         additional_tokens = []
 
         X, self.tokens, additional_tokens = self.preprocess_texts(X)
@@ -401,13 +380,13 @@ class DNN():
         self.model.summary()
 
         es = EarlyStopping(
-            monitor='val_f1_score',
+            monitor='val_mean_squared_error',
             mode='max',
             patience=20,
             verbose=1
         )
         lr_sch = ReduceLROnPlateau(
-            monitor='val_f1_score',
+            monitor='val_mean_squared_error',
             mode='max',
             factor=0.1,
             patience=10,
@@ -418,7 +397,7 @@ class DNN():
         )
         ckpt = ModelCheckpoint(
             os.path.join(out_path, 'model.h5'),
-            monitor='val_f1_score',
+            monitor='val_mean_squared_error',
             mode='max',
             verbose=1,
             save_best_only=True,
@@ -429,12 +408,10 @@ class DNN():
         # print(X.shape, labels_encoded.shape)
         try:
             # print(self.batch_size)
-            self.model.fit(X, labels_encoded, epochs=200, batch_size=self.batch_size, validation_split=0.2, verbose=1,
+            self.model.fit(X, labels_encoded, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.2, verbose=1,
                            callbacks=[es, lr_sch, ckpt])
         except KeyboardInterrupt:
             print('Got KeyboardInterrupt. Stopping.')
-
-        self.model.load_weights(os.path.join(out_path, 'model.h5'))
 
         self.is_trained = True
 
@@ -443,7 +420,7 @@ class DNN():
         if isinstance(X, str):
             X = [X]
 
-        if self.preprocess_texts or self.use_sensitive_tokens:
+        if self.preprocess_texts:
             X, _, _ = self.preprocess_texts(X, tokens=self.tokens)
 
         sequences = self.tokenizer.texts_to_sequences(X)
@@ -456,23 +433,7 @@ class DNN():
         assert self.is_trained, 'Model should be trained before inference.'
 
         proba = self.predict_proba(X)
-
-        if not self.multilabel:
-            # print(preds)
-            preds = np.round(proba)
-
-            new_preds = []
-            for p in preds:
-                if p[0] == 0 and p[1] == 0:
-                    new_preds.append(0)
-                elif p[0] == 1 and p[1] == 0:
-                    new_preds.append(1)
-                else:
-                    new_preds.append(2)
-
-            preds = np.array(new_preds)
-        else:
-            preds = np.argmax(proba, axis=1)
+        preds = np.argmax(proba, axis=1)
 
         if return_proba:
             return preds, proba
@@ -491,16 +452,10 @@ class DNN():
             with open(output_dir / 'nn_model_config.yaml', 'w') as file:
                 file.write(model_yaml)
             # serialize weights to HDF5
-            # self.model.save_weights(output_dir / "model.h5")
+            self.model.save_weights(output_dir / "model.h5")
 
             with open(output_dir / 'tokenizer.pkl', 'wb') as file:
                 pickle.dump(self.tokenizer, file, protocol=pickle.HIGHEST_PROTOCOL)
-
-            config = {
-                'multilabel': self.multilabel,
-            }
-            with open(os.path.join(path, f'model_config.yaml'), 'w') as file:
-                documents = yaml.dump(config, file)
 
             self.logger.info(f'Saved model to {output_dir}')
         else:
@@ -508,10 +463,6 @@ class DNN():
 
     def load(self, path):
         output_dir = Path(path)
-        with open(os.path.join(path, f'model_config.yaml')) as file:
-            config = yaml.load(file, Loader=yaml.FullLoader)
-
-        self.multilabel = config['multilabel']
 
         with open(output_dir / 'nn_model_config.yaml') as file:
             model_config = file.read()
