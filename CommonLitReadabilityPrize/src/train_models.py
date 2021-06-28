@@ -36,7 +36,7 @@ def train_models(config=config, logger=None):
             from common.Bert_Finetune import BertClassifier
             out_path = os.path.join(config['output_dir'], model_type, 'v1')
             model_base = eval(model_config['model'])
-            model = model_base(logger=logger)
+            model = model_base(logger=logger, **model_config['parameters'])
             model.fit(data_train["excerpt"], data_train["target"])
 
             model.save(out_path)
