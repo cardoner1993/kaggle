@@ -29,7 +29,7 @@ config['models'] = {
             'max_len': 512,
             'lr': 2e-5,
             'eps': 1e-8,
-            'epochs': 500
+            'epochs': 5
         }
     },
     'dnn_char_lstm': {
@@ -37,7 +37,7 @@ config['models'] = {
             'backbone': 'LSTM',
             'charlevel': True,
             'max_len': 16384,
-            'epochs': 200
+            'epochs': 2
         }
     },
     'dnn_char_conv': {
@@ -46,33 +46,34 @@ config['models'] = {
             'charlevel': True,
             'batch_size': 32,
             'max_len': 16384,
-            'epochs': 200
+            'epochs': 2
         }
     },
     'dnn_lstm': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
             'backbone': 'LSTM',
-            'epochs': 200
+            'epochs': 2
         }
     },
     'dnn_conv': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
             'backbone': 'CONV',
-            'epochs': 200
+            'epochs': 2
         }
     },
     'dnn_demo': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
             'backbone': 'DEMO',
             'batch_size': 16,
-            'epochs': 200
+            'epochs': 2
         }
     },
     'dnn_clit': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
             'backbone': 'TEST_CLIT',
-            'epochs': 200
+            'epochs': 2
         }
     },
 }
 
+# epochs where 2 put 200 and where 5 put 500
