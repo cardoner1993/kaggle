@@ -22,16 +22,16 @@ config['batch_size'] = 10
 
 
 config['models'] = {
-    'bert-base-uncased': {
-        'model': 'BertClassifier', 'architecture': 'BERT', 'parameters': {
-            'model_name': 'bert-base-uncased',
-            'batch_size': 10,
-            'max_len': 512,
-            'lr': 2e-5,
-            'eps': 1e-8,
-            'epochs': 5
-        }
-    },
+    # 'bert-base-uncased': {
+    #     'model': 'BertClassifier', 'architecture': 'BERT', 'parameters': {
+    #         'model_name': 'bert-base-uncased',
+    #         'batch_size': 10,
+    #         'max_len': 512,
+    #         'lr': 2e-5,
+    #         'eps': 1e-8,
+    #         'epochs': 5
+    #     }
+    # },
     'dnn_char_lstm': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
             'backbone': 'LSTM',
