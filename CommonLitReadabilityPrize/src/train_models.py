@@ -22,25 +22,42 @@ sys.path.append('..')
 from src.train_config import config
 
 
-def train_models(config=config, logger=None, use_bert=False):
+def train_models(config=config, logger=None):
     
     data_train = pd.read_csv(config['train_data'])
     data_train.reset_index(drop=True)
 
-    if use_bert:
-        from common.Bert_Finetune import BertClassifier
-        out_path = os.path.join(config['output_dir'], config['model_name'], 'v1')
-        model = BertClassifier(logger)
-        model.fit(data_train["excerpt"], data_train["target"])
-    else:
-        from common.DNN import DNN
-        backbone = 'DEMO'
-        model_name = f"{backbone}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        out_path = os.path.join(config['output_dir'], model_name)
-        model = DNN(logger=logger, backbone=backbone, epochs=2)
-        model.fit(data_train["excerpt"], data_train["target"], out_path=out_path)
+    for model_type in config['models']:
+        model_config = config['models'][model_type]
+        logger.info(f"Running model {model_type}")
 
-    model.save(out_path)
+        if model_config['architecture'] == 'BERT':
+
+            from common.Bert_Finetune import BertClassifier
+            out_path = os.path.join(config['output_dir'], model_type, 'v1')
+            model_base = eval(model_config['model'])
+            model = model_base(logger=logger)
+            model.fit(data_train["excerpt"], data_train["target"])
+
+            model.save(out_path)
+
+        elif model_config['architecture'] == 'DNN':
+
+            base_path = os.path.join(config['output_dir'], model_config['architecture'])
+            os.makedirs(base_path, exist_ok=True)
+
+            from common.DNN import DNN
+            backbone = model_config['parameters']['backbone']
+            model_name = f"{backbone}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            out_path = os.path.join(base_path, model_name)
+            model_base = eval(model_config['model'])
+            model = model_base(logger=logger, **model_config['parameters'])
+            model.fit(data_train["excerpt"], data_train["target"], out_path=out_path)
+
+            model.save(out_path)
+
+        else:
+            logger.error("The option defined in config is not implemented yet. Continue")
 
 
 if __name__ == '__main__':

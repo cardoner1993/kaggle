@@ -101,13 +101,11 @@ class DNN:
             charlevel=False,
             use_glove=True,
             preprocess_data=False,
-            use_sensitive_tokens=False,
             logger=None,
             batch_size=64,
             max_vocab=10000,
             max_len=8192,
             embedding_mat_columns=50,
-            use_multilabel=False,
             epochs=200
     ):
 
@@ -132,7 +130,6 @@ class DNN:
         self.epochs = epochs
 
         self.augment = False
-        self.multilabel = use_multilabel
 
         if self.charlevel and self.use_glove:
             if logger:
@@ -259,115 +256,13 @@ class DNN:
 
         return model
 
-    def _augment(self, X_train, y_train, n_samples=30000):
-        X_train_aug = []
-        y_train_aug = []
-
-        for _ in tqdm(range(n_samples)):
-            y_new = random.randint(0, 2)
-
-            idx = np.arange(len(y_train))
-            idx = idx[y_train <= y_new]
-
-            random.shuffle(idx)
-            idx = idx[:random.randint(10, 50)]
-
-            x_new = '\n'.join(X_train[idx])
-            y_new = np.max(y_train[idx])
-
-            X_train_aug.append(x_new)
-            y_train_aug.append(y_new)
-
-        return np.array(X_train_aug), np.array(y_train_aug)
-
-    def _augment_multilabel(self, X_train, y_train, n_samples=30000):
-        X_train_aug = []
-        y_train_aug = []
-
-        for i in tqdm(range(n_samples)):
-            y_new = [random.randint(0, 1), random.randint(0, 1)]
-
-            idx = np.arange(len(y_train))
-            idx = idx[(y_train == 0) | (y_train == y_new[0] * 1) | (y_train == y_new[1] * 2)]
-
-            random.shuffle(idx)
-            idx = idx[:random.randint(10, 50)]
-
-            x_new = '\n'.join(X_train[idx])
-            y_train_idx = y_train[idx]
-            y_new = np.array([int(np.any(y_train_idx == 1)), int(np.any(y_train_idx == 2))])
-
-            X_train_aug.append(x_new)
-            y_train_aug.append(y_new)
-
-            # if i >= 4000:
-            #     break
-
-        return np.array(X_train_aug), np.array(y_train_aug)
-
     def fit(self, X_train, y_train, out_path):
         X, y = X_train, y_train
 
         if not Path(out_path).exists():
             os.makedirs(out_path)
 
-        if self.augment:
-            self.logger.info(f'Augmenting. Initial number of samples: {len(X)}')
-            if self.multilabel:
-                if os.path.isfile('train_temp_multilabel.csv'):
-                    df = pd.read_csv('train_temp_multilabel.csv')
-                    X = df['X'].values
-                    y = np.hstack([df['y_0'].values.reshape(-1, 1), df['y_1'].values.reshape(-1, 1)])
-                else:
-                    X_train_aug, y_train_aug = self._augment_multilabel(X, y)
-                    X = X_train_aug
-                    y = y_train_aug
-
-                    df = pd.DataFrame()
-                    df['X'] = X
-                    df['y_0'] = y[:, 0]
-                    df['y_1'] = y[:, 1]
-                    df.to_csv('train_temp_multilabel.csv', index=False)
-                self.logger.info(f'Augmentation done. Number of samples: {len(X)}')
-
-                # lens = [len(x) for x in X]
-                # print(np.min(lens), np.max(lens), np.mean(lens))
-
-                labels_encoded = y
-
-            else:
-                if os.path.isfile('train_temp.csv'):
-                    df = pd.read_csv('train_temp.csv')
-                    X = df['X'].values
-                    y = df['y'].values
-                else:
-                    X_train_aug, y_train_aug = self._augment(X, y)
-                    X = X_train_aug
-                    y = y_train_aug
-
-                    df = pd.DataFrame()
-                    df['X'] = X
-                    df['y'] = y
-                    df.to_csv('train_temp.csv', index=False)
-                self.logger.info(f'Augmentation done. Number of samples: {len(X)}')
-
-                # lens = [len(x) for x in X]
-                # print(np.min(lens), np.max(lens), np.mean(lens))
-
-                labels_encoded = pd.get_dummies(y).values
-
-        else:
-            # lens = [len(x) for x in X]
-            # print(np.min(lens), np.max(lens), np.mean(lens))
-
-            labels_encoded = pd.get_dummies(y).values
-
-        additional_tokens = []
-
         X, self.tokens, additional_tokens = self.preprocess_texts(X)
-
-        # print(X.shape, labels_encoded.shape)
-        # print(np.mean(labels_encoded, axis=0))
 
         embedding_matrix = None
         if self.charlevel:
@@ -422,10 +317,9 @@ class DNN:
             save_freq='epoch'
         )
 
-        # print(X.shape, labels_encoded.shape)
         try:
             # print(self.batch_size)
-            self.model.fit(X, labels_encoded, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.2, verbose=1,
+            self.model.fit(X, y, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.2, verbose=1,
                            callbacks=[es, lr_sch, ckpt])
         except KeyboardInterrupt:
             print('Got KeyboardInterrupt. Stopping.')
