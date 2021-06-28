@@ -23,7 +23,14 @@ config['batch_size'] = 10
 
 config['models'] = {
     'bert-base-uncased': {
-        'model': 'BertClassifier', 'architecture': 'BERT'
+        'model': 'BertClassifier', 'architecture': 'BERT', 'parameters': {
+            'model_name': 'bert-base-uncased',
+            'batch_size': 10,
+            'max_len': 512,
+            'lr': 2e-5,
+            'eps': 1e-8,
+            'epochs': 500
+        }
     },
     'dnn_char_lstm': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
@@ -31,7 +38,7 @@ config['models'] = {
             'charlevel': True,
             'max_len': 16384,
             'epochs': 200
-            }
+        }
     },
     'dnn_char_conv': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
@@ -40,7 +47,7 @@ config['models'] = {
             'batch_size': 32,
             'max_len': 16384,
             'epochs': 200
-            }
+        }
     },
     'dnn_lstm': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
@@ -59,7 +66,7 @@ config['models'] = {
             'backbone': 'DEMO',
             'batch_size': 16,
             'epochs': 200
-            }
+        }
     },
     'dnn_clit': {
         'model': 'DNN', 'architecture': 'DNN', 'parameters': {
