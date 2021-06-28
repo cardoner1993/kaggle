@@ -46,6 +46,10 @@ np.random.seed(0)
 sys.path.insert(0, '../src/')
 
 from train_config import config
+from utils import free_gpu_cache
+
+
+free_gpu_cache()
 
 punctuation = string.punctuation.replace("@", "").replace("+", "").replace("-", "").replace("_", "")
 stop_words = set(stopwords.words('english'))
