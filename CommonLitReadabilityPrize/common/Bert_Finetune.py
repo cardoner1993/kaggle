@@ -20,7 +20,6 @@ from sklearn.model_selection import train_test_split
 from transformers import BertTokenizerFast, BertForSequenceClassification, AdamW, TFBertModel
 from transformers import get_linear_schedule_with_warmup
 from sklearn.metrics import mean_squared_error
-from train_config import config
 
 import torch
 from GPUtil import showUtilization as gpu_usage
@@ -54,18 +53,18 @@ else:
 
 
 class BertClassifier:
-    def __init__(self, logger=None):
+    def __init__(self, model_name, batch_size, max_len, lr, eps, epochs, logger=None):
         self.logger = logger
         self.seed_val = 42
         self.model = None
         self.is_trained = False
-        self.model_name = config['model_name']
+        self.model_name = model_name
         self.tokenizer = BertTokenizerFast.from_pretrained(self.model_name, do_lower_case=True)
-        self.MAX_LEN = config['MAX_LEN']
-        self.lr = config['lr']
-        self.eps = config['eps']
-        self.batch_size = config['batch_size']
-        self.epochs = config['epochs']
+        self.MAX_LEN = max_len
+        self.lr = lr
+        self.eps = eps
+        self.batch_size = batch_size
+        self.epochs = epochs
 
     def process_sentences(self, X):
         # Sents to ids, padding and truncating
@@ -357,6 +356,9 @@ class EarlyStopping(object):
 
 
 if __name__ == '__main__':
+
+    from train_config import config
+
     # Logging
     logger = logging.getLogger('BertClassifier')
     logger.setLevel(logging.DEBUG)
