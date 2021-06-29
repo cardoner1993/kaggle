@@ -17,7 +17,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from transformers import BertTokenizerFast, BertForSequenceClassification, AdamW, TFBertModel
+from transformers import BertTokenizerFast, BertForSequenceClassification, RobertaTokenizerFast, RobertaForSequenceClassification, AdamW, TFBertModel
 from transformers import get_linear_schedule_with_warmup
 from sklearn.metrics import mean_squared_error
 
@@ -48,7 +48,7 @@ class BertClassifier:
         self.model = None
         self.is_trained = False
         self.model_name = model_name
-        self.tokenizer = BertTokenizerFast.from_pretrained(self.model_name, do_lower_case=True)
+        self.tokenizer = BertTokenizerFast.from_pretrained(self.model_name, do_lower_case=True) if self.model_name =='bert-base-uncased' else RobertaTokenizerFast.from_pretrained(self.model_name, do_lower_case=True)
         self.MAX_LEN = max_len
         self.lr = lr
         self.eps = eps
@@ -112,10 +112,18 @@ class BertClassifier:
         validation_sampler = SequentialSampler(validation_data)
         validation_dataloader = DataLoader(validation_data, sampler=validation_sampler, batch_size=self.batch_size)
 
-        basemodel = BertForSequenceClassification.from_pretrained("bert-base-uncased",
-                                                                  num_labels=1,
-                                                                  output_attentions=False,
-                                                                  output_hidden_states=False)
+        if self.model_name == 'bert-base-uncased':
+            basemodel = BertForSequenceClassification.from_pretrained(self.model_name,
+                                                                    num_labels=1,
+                                                                    output_attentions=False,
+                                                                    output_hidden_states=False)
+        elif self.model_name == 'roberta-base':
+            basemodel = RobertaForSequenceClassification.from_pretrained(self.model_name,
+                                                                    num_labels=1,
+                                                                    output_attentions=False,
+                                                                    output_hidden_states=False)
+        else:
+            raise ValueError("Not implemented")
 
         basemodel.cuda()
         # optimizer = torch.optim.Adam(basemodel.parameters(), 
@@ -273,8 +281,15 @@ class BertClassifier:
             model_config = yaml.load(file, Loader=yaml.FullLoader)
 
         # Load trained model and vocabulary fine-tuned
-        self.model = BertForSequenceClassification.from_pretrained(str(output_dir), num_labels=1)
-        self.tokenizer = BertTokenizerFast.from_pretrained(str(output_dir))
+        if self.model_name == 'bert-base-uncased':
+            self.model = BertForSequenceClassification.from_pretrained(str(output_dir), num_labels=1)
+            self.tokenizer = BertTokenizerFast.from_pretrained(str(output_dir))
+        elif self.model_name == 'roberta-base':
+            self.model = RobertaForSequenceClassification.from_pretrained(str(output_dir), num_labels=1)
+            self.tokenizer = RobertaTokenizerFast.from_pretrained(str(output_dir))
+        else:
+            raise ValueError("Not implemented")
+
 
         # Copy the model to the GPU. Check if prediction is ok in CPU
         self.model.to(device)

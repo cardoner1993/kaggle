@@ -31,6 +31,17 @@ config['models'] = {
                 'epochs': 500
             }
         },
+        'roberta-base': {
+            'parameters': {
+                'model_name': 'roberta-base',
+                'batch_size': 10,
+                'max_len': 512,
+                'lr': 2e-5,
+                'eps': 1e-8,
+                'epochs': 500
+            }
+        }
+
     },
     'DNN': {
         'dnn_char_lstm': {
