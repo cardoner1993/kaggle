@@ -43,13 +43,12 @@ from datetime import datetime
 random.seed(0)
 np.random.seed(0)
 
-sys.path.insert(0, '../src/')
+# sys.path.insert(0, '../common/')
 
-from train_config import config
-from utils import free_gpu_cache
+# from utils import free_gpu_cache
 
 
-free_gpu_cache()
+# free_gpu_cache()
 
 punctuation = string.punctuation.replace("@", "").replace("+", "").replace("-", "").replace("_", "")
 stop_words = set(stopwords.words('english'))

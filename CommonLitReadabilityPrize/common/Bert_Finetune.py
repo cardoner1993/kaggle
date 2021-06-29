@@ -22,6 +22,9 @@ from transformers import get_linear_schedule_with_warmup
 from sklearn.metrics import mean_squared_error
 
 import torch
+import sys
+
+sys.path.insert(0, '../common')
 
 from utils import free_gpu_cache
 
