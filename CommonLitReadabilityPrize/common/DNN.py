@@ -245,13 +245,11 @@ class DNN:
             model.add(Conv1D(1024, 5, padding='valid', kernel_initializer='normal', activation='relu'))
             model.add(Conv1D(2048, 5, padding='valid', kernel_initializer='normal', activation='relu'))
             model.add(Conv1D(4098, 5, padding='valid', kernel_initializer='normal', activation='relu'))
-            model.add(Conv1D(8196, 5, padding='valid', kernel_initializer='normal', activation='relu'))
             model.add(GlobalMaxPooling1D())
             model.add(Dense(120, kernel_initializer='normal', activation='relu'))
             model.add(Dense(240, kernel_initializer='normal', activation='relu'))
             model.add(Dense(480, kernel_initializer='normal', activation='relu'))
             model.add(Dense(980, kernel_initializer='normal', activation='relu'))
-            model.add(Dense(1500, kernel_initializer='normal', activation='relu'))
         else:
             raise NotImplementedError
 
@@ -296,13 +294,13 @@ class DNN:
 
         es = EarlyStopping(
             monitor='val_mean_squared_error',
-            mode='max',
+            mode='min',
             patience=20,
             verbose=1
         )
         lr_sch = ReduceLROnPlateau(
             monitor='val_mean_squared_error',
-            mode='max',
+            mode='min',
             factor=0.1,
             patience=10,
             verbose=1,
@@ -313,7 +311,7 @@ class DNN:
         ckpt = ModelCheckpoint(
             os.path.join(out_path, 'model.h5'),
             monitor='val_mean_squared_error',
-            mode='max',
+            mode='min',
             verbose=1,
             save_best_only=True,
             save_weights_only=False,
