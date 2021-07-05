@@ -28,7 +28,7 @@ config['models'] = {
                 'max_len': 512,
                 'lr': 2e-5,
                 'eps': 1e-8,
-                'epochs': 500
+                'epochs': 2
             }
         },
         'roberta-base': {
@@ -38,7 +38,7 @@ config['models'] = {
                 'max_len': 512,
                 'lr': 2e-5,
                 'eps': 1e-8,
-                'epochs': 500
+                'epochs': 2
             }
         }
 
@@ -49,7 +49,7 @@ config['models'] = {
                 'backbone': 'LSTM',
                 'charlevel': True,
                 'max_len': 16384,
-                'epochs': 200
+                'epochs': 2
             }
         },
         'dnn_char_conv': {
@@ -58,32 +58,32 @@ config['models'] = {
                 'charlevel': True,
                 'batch_size': 32,
                 'max_len': 16384,
-                'epochs': 200
+                'epochs': 2
             }
         },
         'dnn_lstm': {
             'parameters': {
                 'backbone': 'LSTM',
-                'epochs': 200
+                'epochs': 2
             }
         },
         'dnn_conv': {
             'parameters': {
                 'backbone': 'CONV',
-                'epochs': 200
+                'epochs': 2
             }
         },
         'dnn_demo': {
             'parameters': {
                 'backbone': 'DEMO',
                 'batch_size': 16,
-                'epochs': 200
+                'epochs': 2
             }
         },
         'dnn_clit': {
             'parameters': {
                 'backbone': 'TEST_CLIT',
-                'epochs': 200
+                'epochs': 2
             }
         },
     }

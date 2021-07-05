@@ -43,9 +43,9 @@ from datetime import datetime
 random.seed(0)
 np.random.seed(0)
 
-# sys.path.insert(0, '../common/')
+sys.path.insert(0, '../common/')
 
-# from utils import free_gpu_cache
+from utils import close_sess_keras, config_gpu_growth
 
 
 # free_gpu_cache()
@@ -369,9 +369,10 @@ class DNN:
             with open(output_dir / 'tokenizer.pkl', 'wb') as file:
                 pickle.dump(self.tokenizer, file, protocol=pickle.HIGHEST_PROTOCOL)
 
-            self.logger.info(f'Saved model to {output_dir}')
+            # self.logger.info(f'Saved model to {output_dir}')
         else:
-            self.logger.warning('Cannot save the model. Train it first.')
+            pass
+            # self.logger.warning('Cannot save the model. Train it first.')
 
     def load(self, path):
         output_dir = Path(path)
@@ -379,10 +380,21 @@ class DNN:
         with open(output_dir / 'nn_model_config.yaml') as file:
             model_config = file.read()
 
-        self.model = model_from_yaml(model_config)
+        self.model = model_from_yaml(model_config, custom_objects={'ResidualBlock1D': ResidualBlock1D})
         self.model.load_weights(output_dir / "model.h5")
 
         with open(output_dir / 'tokenizer.pkl', 'rb') as file:
             self.tokenizer = pickle.load(file)
 
         self.is_trained = True
+
+
+def run_tensorflow(X, Y, parameters, path):
+    print("Starting process DNN")
+    sess = config_gpu_growth()
+    model = DNN(logger=None, **parameters)
+    model.fit(X, Y, out_path=path)
+
+    model.save(path)
+    close_sess_keras(sess)
+    print("Done process DNN")

@@ -3,6 +3,8 @@ import datetime
 import glob
 import json
 import logging
+import multiprocessing
+
 import numpy as np
 import sys
 import time
@@ -17,14 +19,15 @@ from termcolor import colored
 from pathlib import Path
 
 from sklearn.metrics import accuracy_score, f1_score, precision_recall_fscore_support
-sys.path.append('../')
-sys.path.append('..')
 
-from src.train_config import config
+sys.path.append('../common')
+
+from train_config import config
+from utils import free_gpu_cache, config_gpu_growth, close_sess_keras
 
 
+# Todo Not used because of GPU errors
 def train_models(config=config, logger=None):
-    
     data_train = pd.read_csv(config['train_data'])
     data_train.reset_index(drop=True)
 
@@ -32,31 +35,50 @@ def train_models(config=config, logger=None):
         model_config = config['models'][model_type]
         logger.info(f"Running model {model_type}")
 
-        if model_config['architecture'] == 'BERT':
+        if model_type == 'BERT':
 
-            from common.Bert_Finetune import BertClassifier
-            out_path = os.path.join(config['output_dir'], model_type, 'v1')
-            model_base = eval(model_config['model'])
-            model = model_base(logger=logger, **model_config['parameters'])
-            model.fit(data_train["excerpt"], data_train["target"])
+            from Bert_Finetune import BertClassifier, run_pytorch
 
-            model.save(out_path)
+            for model in model_config:
+                # free_gpu_cache()
+                out_path = os.path.join(config['output_dir'], 'BERT', model, 'v1')
+                # model = BertClassifier(logger=logger, **model_config[model]['parameters'])
+                # model.fit(data_train["excerpt"], data_train["target"])
 
-        elif model_config['architecture'] == 'DNN':
+                # model.save(out_path)
+                # model.release_memory()
+                # option 1: execute code with extra process
+                try:
+                    multiprocessing.set_start_method('spawn')
+                except RuntimeError:
+                    raise ValueError("Not Valid spawn method")
 
-            base_path = os.path.join(config['output_dir'], model_config['architecture'])
-            os.makedirs(base_path, exist_ok=True)
+                p = multiprocessing.Process(target=run_pytorch, args=(data_train["excerpt"],
+                                                                      data_train["target"],
+                                                                      model_config[model]['parameters'],
+                                                                      out_path,))
+                p.start()
+                p.join()
 
-            from common.DNN import DNN
-            backbone = model_config['parameters']['backbone']
-            model_name = f"{backbone}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            out_path = os.path.join(base_path, model_name)
-            model_base = eval(model_config['model'])
-            model = model_base(logger=logger, **model_config['parameters'])
-            model.fit(data_train["excerpt"], data_train["target"], out_path=out_path)
+        elif model_type == 'DNN':
+            from DNN import DNN, run_tensorflow
 
-            model.save(out_path)
-
+            for model in model_config:
+                base_path = os.path.join(config['output_dir'], 'DNN', model,
+                                         datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
+                os.makedirs(base_path, exist_ok=True)
+                # model = DNN(logger=logger, **model_config[model]['parameters'])
+                # model.fit(data_train["excerpt"], data_train["target"], out_path=base_path)
+                #
+                # model.save(base_path)
+                # option 1: execute code with extra process
+                p = multiprocessing.Process(target=run_tensorflow, args=(data_train["excerpt"],
+                                                                         data_train["target"],
+                                                                         model_config[model]['parameters'],
+                                                                         base_path,))
+                p.start()
+                p.join()
+                # run_tensorflow(data_train["excerpt"], data_train["target"], model_config[model]['parameters'], base_path)
         else:
             logger.error("The option defined in config is not implemented yet. Continue")
 
@@ -68,7 +90,7 @@ def train_model(model_type, model_name=None, logger=None):
 
     if model_type == 'BERT':
 
-        from common.Bert_Finetune import BertClassifier
+        from Bert_Finetune import BertClassifier
 
         model_config = config['models'][model_type][model_name]
         out_path = os.path.join(config['output_dir'], model_name, 'v1')
@@ -79,7 +101,7 @@ def train_model(model_type, model_name=None, logger=None):
 
     elif model_type == 'DNN':
 
-        from common.DNN import DNN
+        from DNN import DNN
 
         model_config = config['models'][model_type][model_name]
         base_path = os.path.join(config['output_dir'], model_type)
@@ -125,9 +147,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--type', required=True, help='Model type. EX: BERT or DNN (mayusc)')
     parser.add_argument('-n', '--name', required=True, help='DNN or BERT name. Options are: '
-                                                                           'bert-base-uncased '
-                                                                           'dnn_char_lstm, dnn_char_conv, dnn_lstm,'
-                                                                           'dnn_conv, dnn_demo, dnn_clit')
+                                                            'bert-base-uncased '
+                                                            'dnn_char_lstm, dnn_char_conv, dnn_lstm,'
+                                                            'dnn_conv, dnn_demo, dnn_clit')
 
     args = parser.parse_args()
 
@@ -136,7 +158,8 @@ if __name__ == '__main__':
     logger.info('Working directory: ' + colored(f'{config["output_dir"]}', 'green'))
 
     # train_models(config=config, logger=logger)
-    train_model(model_type=args.type, model_name=args.name, logger=logger)
+    # train_model(model_type=args.type, model_name=args.name, logger=logger)
+    train_models(config=config, logger=logger)
 
     train_end_time = time.time()
     train_time = train_end_time - train_start_time

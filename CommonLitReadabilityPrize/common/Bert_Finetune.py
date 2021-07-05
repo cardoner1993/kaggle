@@ -23,13 +23,15 @@ from sklearn.metrics import mean_squared_error
 
 import torch
 import sys
+from GPUtil import showUtilization as gpu_usage
+import gc
 
 sys.path.insert(0, '../common')
 
 from utils import free_gpu_cache
 
 
-free_gpu_cache()
+# free_gpu_cache()
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
@@ -54,6 +56,17 @@ class BertClassifier:
         self.eps = eps
         self.batch_size = batch_size
         self.epochs = epochs
+
+    def release_memory(self):
+        print("Initial GPU Usage")
+        gpu_usage()
+
+        del self.model
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        print("GPU Usage after emptying the cache")
+        gpu_usage()
 
     def process_sentences(self, X):
         # Sents to ids, padding and truncating
@@ -385,3 +398,24 @@ if __name__ == '__main__':
     model.save(out_path)
 
     print("Finished training. Model saved.")
+
+
+def run_pytorch(X, Y, parameters, path):
+    logger = logging.getLogger('train_models')
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter(colored('[%(asctime)s]', 'magenta') +
+                                  colored('[%(levelname)s] ','blue') + '%(message)s', '%Y-%m-%d %H:%M:%S')
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    logger.info("Starting process BERT")
+    model = BertClassifier(logger=logger, **parameters)
+    model.fit(X, Y)
+
+    model.save(path)
+    model.release_memory()
+    logger.info("Done process BERT")
