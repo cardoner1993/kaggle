@@ -56,11 +56,14 @@ class BertClassifier:
         self.eps = eps
         self.batch_size = batch_size
         self.epochs = epochs
+        self.optimizer = None
 
     def release_memory(self):
         print("Initial GPU Usage")
         gpu_usage()
 
+        self._optimizer_to(torch.device('cpu'))
+        del self.optimizer
         del self.model
         gc.collect()
         torch.cuda.empty_cache()
@@ -91,6 +94,20 @@ class BertClassifier:
         #         labels_flat = labels.flatten()
 
         return np.sqrt(mean_squared_error(labels, preds))
+
+    def _optimizer_to(self, device):
+        for param in self.optimizer.state.values():
+            # Not sure there are any global tensors in the state dict
+            if isinstance(param, torch.Tensor):
+                param.data = param.data.to(device)
+                if param._grad is not None:
+                    param._grad.data = param._grad.data.to(device)
+            elif isinstance(param, dict):
+                for subparam in param.values():
+                    if isinstance(subparam, torch.Tensor):
+                        subparam.data = subparam.data.to(device)
+                        if subparam._grad is not None:
+                            subparam._grad.data = subparam._grad.data.to(device)
 
     def fit(self, X, y):
         """
@@ -148,7 +165,7 @@ class BertClassifier:
         #     lr = self.lr
         # ) 
 
-        optimizer = AdamW(basemodel.parameters(),
+        self.optimizer = AdamW(basemodel.parameters(),
                           # Implements Adam algorithm with weight decay fix as introduced in Decoupled Weight Decay Regularization.
                           lr=self.lr,
                           eps=self.eps
@@ -157,7 +174,7 @@ class BertClassifier:
         total_steps = len(train_dataloader) * self.epochs
 
         # Create a schedule with a learning rate that decreases linearly from the initial lr set in the optimizer to 0, after a warmup period during which it increases linearly from 0 to the initial lr set in the optimizer
-        scheduler = get_linear_schedule_with_warmup(optimizer,
+        scheduler = get_linear_schedule_with_warmup(self.optimizer,
                                                     num_warmup_steps=0,
                                                     num_training_steps=total_steps)
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1, verbose=True)
@@ -191,7 +208,7 @@ class BertClassifier:
                 total_loss += loss.item()
                 loss.backward()  # calc gradients
                 torch.nn.utils.clip_grad_norm_(basemodel.parameters(), 1.0)
-                optimizer.step()
+                self.optimizer.step()
                 scheduler.step()
             avg_train_loss = total_loss / len(train_dataloader)
             loss_values.append(avg_train_loss)
@@ -417,5 +434,5 @@ def run_pytorch(X, Y, parameters, path):
     model.fit(X, Y)
 
     model.save(path)
-    model.release_memory()
+    # model.release_memory()
     logger.info("Done process BERT")

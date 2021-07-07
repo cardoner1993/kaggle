@@ -17,6 +17,7 @@ import fire
 from tqdm import tqdm
 from termcolor import colored
 from pathlib import Path
+import torch
 
 from sklearn.metrics import accuracy_score, f1_score, precision_recall_fscore_support
 
@@ -39,20 +40,22 @@ def train_models(config=config, logger=None):
 
             from Bert_Finetune import BertClassifier, run_pytorch
 
+            try:
+                multiprocessing.set_start_method('spawn')
+            except RuntimeError:
+                raise ValueError("Not Valid spawn method")
+
             for model in model_config:
                 # free_gpu_cache()
                 out_path = os.path.join(config['output_dir'], 'BERT', model, 'v1')
+                # option base. Clean model and optimizer with release memory after training
                 # model = BertClassifier(logger=logger, **model_config[model]['parameters'])
                 # model.fit(data_train["excerpt"], data_train["target"])
 
                 # model.save(out_path)
                 # model.release_memory()
-                # option 1: execute code with extra process
-                try:
-                    multiprocessing.set_start_method('spawn')
-                except RuntimeError:
-                    raise ValueError("Not Valid spawn method")
 
+                # option 1: execute code with extra process
                 p = multiprocessing.Process(target=run_pytorch, args=(data_train["excerpt"],
                                                                       data_train["target"],
                                                                       model_config[model]['parameters'],
